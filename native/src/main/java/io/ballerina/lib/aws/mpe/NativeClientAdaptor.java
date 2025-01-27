@@ -19,7 +19,6 @@
 package io.ballerina.lib.aws.mpe;
 
 import io.ballerina.runtime.api.Environment;
-import io.ballerina.runtime.api.Future;
 import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BObject;
@@ -93,20 +92,18 @@ public final class NativeClientAdaptor {
         MarketplaceEntitlementClient nativeClient = (MarketplaceEntitlementClient) bAwsMpeClient
                 .getNativeData(NATIVE_CLIENT);
         GetEntitlementsRequest entitlementsRequest = CommonUtils.getNativeRequest(request);
-        Future future = env.markAsync();
-        EXECUTOR_SERVICE.execute(() -> {
+        return env.yieldAndRun(() -> {
             try {
                 GetEntitlementsResponse entitlementsResponse = nativeClient.getEntitlements(entitlementsRequest);
                 BMap<BString, Object> bResponse = CommonUtils.getBallerinaResponse(entitlementsResponse);
-                future.complete(bResponse);
+                return bResponse;
             } catch (Exception e) {
                 String errorMsg = String.format("Error occurred while retrieving entitlements for the product: %s",
                         e.getMessage());
                 BError bError = CommonUtils.createError(errorMsg, e);
-                future.complete(bError);
+                return bError;
             }
         });
-        return null;
     }
 
     /**

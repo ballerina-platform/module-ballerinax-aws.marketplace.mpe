@@ -1,5 +1,5 @@
 [package]
-distribution = "2201.9.2"
+distribution = "2201.11.0-20241117-133400-a3054b77"
 org = "ballerinax"
 name = "aws.marketplace.mpe"
 version = "@toml.version@"
@@ -9,10 +9,10 @@ keywords = ["AWS", "Marketplace", "Cloud/Subscriptions", "Entitlement Management
 icon = "icon.png"
 repository = "https://github.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe"
 
-[platform.java17]
+[platform.java21]
 graalvmCompatible = true
 
-[[platform.java17.dependency]]
+[[platform.java21.dependency]]
 groupId = "io.ballerina.lib"
 artifactId = "aws.marketplace.mpe-native"
 version = "@project.version@"
