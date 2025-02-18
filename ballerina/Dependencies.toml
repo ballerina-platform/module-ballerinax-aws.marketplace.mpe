@@ -29,7 +29,7 @@ modules = [
 [[package]]
 org = "ballerina"
 name = "time"
-version = "2.4.0"
+version = "2.5.0"
 dependencies = [
 	{org = "ballerina", name = "jballerina.java"}
 ]
@@ -40,7 +40,7 @@ modules = [
 [[package]]
 org = "ballerinax"
 name = "aws.marketplace.mpe"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
 	{org = "ballerina", name = "constraint"},
 	{org = "ballerina", name = "jballerina.java"},
