@@ -125,7 +125,7 @@ public final class CommonUtils {
         }
         Instant expirationDate = nativeEntitlement.expirationDate();
         if (Objects.nonNull(expirationDate)) {
-            bEntitlement.put(Constants.MPE_ENTITLEMENT_EXP_DATE, new Utc(expirationDate));
+            bEntitlement.put(Constants.MPE_ENTITLEMENT_EXP_DATE, new Utc(expirationDate).build());
         }
         populateEntitlementValue(nativeEntitlement, bEntitlement);
         return bEntitlement;
