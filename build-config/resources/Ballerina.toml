@@ -9,9 +9,6 @@ keywords = ["AWS", "Marketplace", "Cloud/Subscriptions", "Entitlement Management
 icon = "icon.png"
 repository = "https://github.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe"
 
-[platform.java17]
-graalvmCompatible = true
-
 [[platform.java17.dependency]]
 groupId = "io.ballerina.lib"
 artifactId = "aws.marketplace.mpe-native"
