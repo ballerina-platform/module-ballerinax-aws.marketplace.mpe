@@ -38,9 +38,7 @@ dependencies {
     implementation group: 'org.ballerinalang', name: 'ballerina-lang', version: "${ballerinaLangVersion}"
     implementation group: 'org.ballerinalang', name: 'value', version: "${ballerinaLangVersion}"
     implementation group: 'io.ballerina.stdlib', name: 'time-native', version: "${stdlibTimeVersion}"
-    implementation group: 'software.amazon.awssdk', name: 'marketplaceentitlement', version: "${awsMpEntitlementSdkVersion}"
-
-    dist group: 'software.amazon.awssdk', name: 'marketplaceentitlement', version: "${awsMpEntitlementSdkVersion}"
+    implementation group: 'software.amazon.awssdk', name: 'marketplaceentitlement', version: "${awsJavaSdkVersion}"
 }
 
 tasks.withType(JavaCompile) {
