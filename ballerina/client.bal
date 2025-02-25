@@ -48,7 +48,7 @@ public isolated client class Client {
     # + request - The `mpe:GetEntitlements` request with relevant details
     # + return - An `mpe:EntitlementsResponse` containing the entitlement details, 
     # or an `mpe:Error` if the request validation or the operation failed.
-    isolated remote function getEntitlements(*EntitlementsRequest request) returns EntitlementsResponse|Error {
+    remote function getEntitlements(*EntitlementsRequest request) returns EntitlementsResponse|Error {
         EntitlementsRequest|constraint:Error validated = constraint:validate(request);
         if validated is constraint:Error {
             return error Error(string `Request validation failed: ${validated.message()}`);
