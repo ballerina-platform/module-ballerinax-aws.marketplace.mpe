@@ -14,4 +14,3 @@ jobs:
     with:
       package-name: aws.marketplace.mpe
       package-org: ballerinax
-      additional-release-flags: "-x test"
