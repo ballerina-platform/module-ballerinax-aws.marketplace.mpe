@@ -5,7 +5,7 @@ name = "aws.marketplace.mpe"
 version = "0.2.1"
 license= ["Apache-2.0"]
 authors = ["Ballerina"]
-keywords = ["AWS", "Marketplace", "Cloud/Subscriptions", "Entitlement Management", "Vendor/Amazon", "Area/eCommerce", "Type/Connector"]
+keywords = ["Cloud/Marketplace", "Cost/Paid", "Vendor/Amazon", "Area/Cloud & Infrastructure", "Type/Connector"]
 icon = "icon.png"
 repository = "https://github.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe"
 
