@@ -1,11 +1,11 @@
 ## Overview
 
-[AWS Marketplace Entitlement Service](https://docs.aws.amazon.com/marketplace/latest/userguide/entitlement.html) is a 
-service that allows AWS Marketplace sellers to determine the entitlements of customers who have subscribed to their 
-products.
+The AWS Marketplace Entitlement Service connector offers APIs to interact with the service, enabling developers to retrieve entitlement data for a product programmatically.
 
-The `ballerinax/aws.marketplace.mpe` package offers APIs to interact with the AWS Marketplace Entitlement Service,
-enabling developers to retrieve entitlement data for a product programmatically.
+### Key Features
+
+- Determine entitlements of customers who have subscribed to products
+- Programmatic retrieval of entitlement data
 
 ## Setup guide
 Before using this connector in your Ballerina application, complete the following:
