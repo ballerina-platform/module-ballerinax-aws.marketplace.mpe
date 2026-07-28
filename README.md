@@ -24,6 +24,8 @@ To use the `aws.marketplace.mpe` connector in your Ballerina project, modify the
 
 ### Step 1: Import the module
 
+Import the `ballerinax/aws` and `ballerinax/aws.marketplace.mpe` modules into your Ballerina project.
+
 ```ballerina
 import ballerinax/aws;
 import ballerinax/aws.marketplace.mpe;

@@ -14,48 +14,70 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import ballerina/os;
 import ballerina/test;
+import ballerinax/aws;
+import ballerinax/aws.auth;
+
+configurable boolean isLiveServer = os:getEnv("IS_LIVE_SERVER") == "true";
+
+configurable string accessKeyId = os:getEnv("BALLERINA_AWS_TEST_ACCESS_KEY_ID");
+configurable string secretAccessKey = os:getEnv("BALLERINA_AWS_TEST_SECRET_ACCESS_KEY");
+configurable string liveProductCode = os:getEnv("BALLERINA_AWS_MPE_TEST_PRODUCT_CODE");
+
+final readonly & aws:Region awsRegion = aws:US_EAST_1;
+
+final readonly & auth:StaticAuthConfig liveAuth = {
+    accessKeyId,
+    secretAccessKey
+};
+
+final readonly & auth:StaticAuthConfig mockAuth = {
+    accessKeyId: "mock-access-key-id",
+    secretAccessKey: "mock-secret-access-key"
+};
+
+final readonly & ConnectionConfig connectionConfig = isLiveServer
+    ? {region: awsRegion, auth: liveAuth}
+    : {region: awsRegion, auth: mockAuth, endpoint: {customEndpoint: mockServerUrl}};
+
+final string testProductCode = isLiveServer ? liveProductCode : MOCK_PRODUCT_CODE;
+
+final Client mpeClient = check new (connectionConfig);
+
+@test:BeforeSuite
+function startMockService() returns error? {
+    if isLiveServer {
+        return;
+    }
+    check mockListener.attach(mockService, "/");
+    check mockListener.'start();
+}
+
+@test:AfterSuite
+function stopMockService() returns error? {
+    if isLiveServer {
+        return;
+    }
+    check mockListener.gracefulStop();
+}
 
 @test:Config {
     groups: ["init"]
 }
-isolated function testInitUsingStaticAuth() returns error? {
-    if accessKeyId == "" || secretAccessKey == "" {
-        return;
-    }
-    ConnectionConfig connectionConfig = {
-        region: awsRegion,
-        auth: staticAuth
-    };
+isolated function testInitWithRegionEnum() returns error? {
     Client mpe = check new (connectionConfig);
     check mpe->close();
 }
 
 @test:Config {
-    enable: false,
     groups: ["init"]
 }
-isolated function testInitUsingProfileAuth() returns error? {
-    ConnectionConfig connectionConfig = {
-        region: awsRegion,
-        auth: profileAuth
-    };
-    Client mpe = check new (connectionConfig);
-    check mpe->close();
-}
-
-@test:Config {
-    groups: ["init"]
-}
-isolated function testInitUsingRegionString() returns error? {
-    if accessKeyId == "" || secretAccessKey == "" {
-        return;
-    }
-    ConnectionConfig connectionConfig = {
-        region: "us-east-1",
-        auth: staticAuth
-    };
-    Client mpe = check new (connectionConfig);
+isolated function testInitWithRegionString() returns error? {
+    ConnectionConfig config = isLiveServer
+        ? {region: "us-east-1", auth: liveAuth}
+        : {region: "us-east-1", auth: mockAuth, endpoint: {customEndpoint: mockServerUrl}};
+    Client mpe = check new (config);
     check mpe->close();
 }
 
@@ -63,11 +85,7 @@ isolated function testInitUsingRegionString() returns error? {
     groups: ["getEntitlements"]
 }
 function testGetEntitlements() returns error? {
-    if !liveTestsEnabled || testProductCode == "" {
-        return;
-    }
     EntitlementsResponse response = check mpeClient->getEntitlements(productCode = testProductCode);
-    // Every returned entitlement must belong to the requested product.
     foreach Entitlement entitlement in response.entitlements {
         test:assertEquals(entitlement.productCode, testProductCode);
     }
@@ -77,25 +95,35 @@ function testGetEntitlements() returns error? {
     groups: ["getEntitlements"]
 }
 function testGetEntitlementsWithFilter() returns error? {
-    if !liveTestsEnabled || testProductCode == "" {
-        return;
-    }
     EntitlementsResponse response = check mpeClient->getEntitlements(
         productCode = testProductCode,
-        filter = {dimension: ["default"]},
+        filter = {dimension: [MOCK_DIMENSION]},
         maxResults = 10
     );
-    // The filtered results must not exceed the requested page size.
     test:assertTrue(response.entitlements.length() <= 10);
 }
 
 @test:Config {
     groups: ["getEntitlements"]
 }
-function testGetEntitlementsWithInvalidProductCode() returns error? {
-    if !liveTestsEnabled {
-        return;
+function testGetEntitlementsWithUnknownProductCode() returns error? {
+    EntitlementsResponse response = check mpeClient->getEntitlements(productCode = "unknown-product-code");
+    test:assertEquals(response.entitlements.length(), 0);
+}
+
+@test:Config {
+    groups: ["getEntitlements"]
+}
+function testGetEntitlementsWithMaxResultsOutOfRange() returns error? {
+    EntitlementsResponse|Error response = mpeClient->getEntitlements(
+        productCode = testProductCode,
+        maxResults = 100
+    );
+    if response !is Error {
+        test:assertFail("expected an out-of-range 'maxResults' to be rejected by the service");
     }
-    EntitlementsResponse|Error response = mpeClient->getEntitlements(productCode = "invalid-product-code");
-    test:assertTrue(response is Error);
+    aws:ErrorDetails details = response.detail();
+    test:assertEquals(details.httpStatusCode, 400);
+    test:assertEquals(details.errorCode, "InvalidParameterException");
+    test:assertTrue(details.requestId is string, "the service error must carry a request id");
 }
