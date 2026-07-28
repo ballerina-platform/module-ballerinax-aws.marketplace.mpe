@@ -18,23 +18,18 @@
 
 package io.ballerina.lib.aws.mpe;
 
+import io.ballerina.lib.aws.EndpointConfigUtils;
+import io.ballerina.lib.aws.auth.ProviderFactory;
 import io.ballerina.runtime.api.Environment;
 import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BObject;
 import io.ballerina.runtime.api.values.BString;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.services.marketplaceentitlement.MarketplaceEntitlementClient;
+import software.amazon.awssdk.services.marketplaceentitlement.MarketplaceEntitlementClientBuilder;
 import software.amazon.awssdk.services.marketplaceentitlement.model.GetEntitlementsRequest;
 import software.amazon.awssdk.services.marketplaceentitlement.model.GetEntitlementsResponse;
-
-import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Representation of {@link software.amazon.awssdk.services.marketplaceentitlement.MarketplaceEntitlementClient} with
@@ -42,9 +37,17 @@ import java.util.concurrent.Executors;
  */
 public final class NativeClientAdaptor {
     private static final String NATIVE_CLIENT = "nativeClient";
-    private static final ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool(new AwsMpeThreadFactory());
+    private static final String NATIVE_CREDENTIALS_PROVIDER = "nativeCredentialsProvider";
 
     private NativeClientAdaptor() {
+    }
+
+    private static MarketplaceEntitlementClient buildClient(ConnectionConfig connectionConfig) {
+        MarketplaceEntitlementClientBuilder builder = MarketplaceEntitlementClient.builder()
+                .region(connectionConfig.region())
+                .credentialsProvider(connectionConfig.credentialsProvider());
+        EndpointConfigUtils.applyEndpointConfig(builder, connectionConfig.endpointConfig());
+        return builder.build();
     }
 
     /**
@@ -57,27 +60,15 @@ public final class NativeClientAdaptor {
     public static Object init(BObject bAwsMpeClient, BMap<BString, Object> configurations) {
         try {
             ConnectionConfig connectionConfig = new ConnectionConfig(configurations);
-            AwsCredentials credentials = getCredentials(connectionConfig);
-            AwsCredentialsProvider credentialsProvider = StaticCredentialsProvider.create(credentials);
-            MarketplaceEntitlementClient nativeClient = MarketplaceEntitlementClient.builder()
-                    .credentialsProvider(credentialsProvider)
-                    .region(connectionConfig.region()).build();
+            MarketplaceEntitlementClient nativeClient = buildClient(connectionConfig);
             bAwsMpeClient.addNativeData(NATIVE_CLIENT, nativeClient);
+            // Retained for release on close(): the SDK client does not close a
+            // caller-supplied credentials provider.
+            bAwsMpeClient.addNativeData(NATIVE_CREDENTIALS_PROVIDER, connectionConfig.credentialsProvider());
         } catch (Exception e) {
-            String errorMsg = String.format("Error occurred while initializing the marketplace entitlement client: %s",
-                    e.getMessage());
-            return CommonUtils.createError(errorMsg, e);
+            return CommonUtils.createError("initializing the marketplace entitlement client", e);
         }
         return null;
-    }
-
-    private static AwsCredentials getCredentials(ConnectionConfig connectionConfig) {
-        if (Objects.nonNull(connectionConfig.sessionToken())) {
-            return AwsSessionCredentials.create(connectionConfig.accessKeyId(), connectionConfig.secretAccessKey(),
-                    connectionConfig.sessionToken());
-        } else {
-            return AwsBasicCredentials.create(connectionConfig.accessKeyId(), connectionConfig.secretAccessKey());
-        }
     }
 
     /**
@@ -98,9 +89,7 @@ public final class NativeClientAdaptor {
                 BMap<BString, Object> bResponse = CommonUtils.getBallerinaResponse(entitlementsResponse);
                 return bResponse;
             } catch (Exception e) {
-                String errorMsg = String.format("Error occurred while retrieving entitlements for the product: %s",
-                        e.getMessage());
-                BError bError = CommonUtils.createError(errorMsg, e);
+                BError bError = CommonUtils.createError("retrieving entitlements for the product", e);
                 return bError;
             }
         });
@@ -115,13 +104,28 @@ public final class NativeClientAdaptor {
     public static Object close(BObject bAwsMpeClient) {
         MarketplaceEntitlementClient nativeClient = (MarketplaceEntitlementClient) bAwsMpeClient
                 .getNativeData(NATIVE_CLIENT);
+        Exception closeException = null;
         try {
             nativeClient.close();
         } catch (Exception e) {
-            String errorMsg = String.format("Error occurred while closing the marketplace entitlement client: %s",
-                    e.getMessage());
-            return CommonUtils.createError(errorMsg, e);
+            closeException = e;
+        } finally {
+            // Always release the credentials provider's resources (e.g. STS/SSO
+            // background refresh threads), even if closing the client itself failed.
+            try {
+                Object provider = bAwsMpeClient.getNativeData(NATIVE_CREDENTIALS_PROVIDER);
+                if (provider instanceof AwsCredentialsProvider credentialsProvider) {
+                    ProviderFactory.closeProvider(credentialsProvider);
+                }
+            } catch (Exception e) {
+                if (closeException == null) {
+                    closeException = e;
+                } else {
+                    closeException.addSuppressed(e);
+                }
+            }
         }
-        return null;
+        return closeException == null ? null
+                : CommonUtils.createError("closing the marketplace entitlement client", closeException);
     }
 }

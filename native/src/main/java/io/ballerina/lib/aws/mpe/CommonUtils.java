@@ -154,10 +154,11 @@ public final class CommonUtils {
         }
     }
 
-    public static BError createError(String message, Throwable exception) {
+    public static BError createError(String action, Throwable exception) {
         BError cause = ErrorCreator.createError(exception);
         BMap<BString, Object> errorDetails = ValueCreator.createRecordValue(
                 ModuleUtils.getModule(), Constants.MPE_ERROR_DETAILS);
+        String message = "Error occurred while " + action;
         if (exception instanceof AwsServiceException awsSvcExp && Objects.nonNull(awsSvcExp.awsErrorDetails())) {
             AwsErrorDetails awsErrorDetails = awsSvcExp.awsErrorDetails();
             if (Objects.nonNull(awsErrorDetails.sdkHttpResponse())) {
@@ -170,6 +171,11 @@ public final class CommonUtils {
                     Constants.MPE_ERROR_DETAILS_ERR_CODE, StringUtils.fromString(awsErrorDetails.errorCode()));
             errorDetails.put(
                     Constants.MPE_ERROR_DETAILS_ERR_MSG, StringUtils.fromString(awsErrorDetails.errorMessage()));
+            if (Objects.nonNull(awsSvcExp.requestId())) {
+                errorDetails.put(
+                        Constants.MPE_ERROR_DETAILS_REQUEST_ID, StringUtils.fromString(awsSvcExp.requestId()));
+            }
+            message = message + ": " + awsErrorDetails.errorMessage();
         }
         return ErrorCreator.createError(
                 ModuleUtils.getModule(), Constants.MPE_ERROR, StringUtils.fromString(message), cause, errorDetails);

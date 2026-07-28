@@ -17,12 +17,12 @@
 import ballerina/constraint;
 import ballerina/jballerina.java;
 
-# AWS Marketplace entitlement client.
+# AWS Marketplace Entitlement service client.
 public isolated client class Client {
 
     # Initialize the Ballerina AWS MPE client.
     # ```ballerina
-    # mpe:Client mpe = check new(region = mpe:US_EAST_1, auth = {
+    # mpe:Client mpe = check new(region = aws:US_EAST_1, auth = {
     #   accessKeyId: "<aws-access-key>",
     #   secretAccessKey: "<aws-secret-key>"
     # });
@@ -68,7 +68,7 @@ public isolated client class Client {
     # ```
     # 
     # + return - A `mpe:Error` if there is an error while closing the client resources or else nil.
-    remote function close() returns Error? =
+    remote isolated function close() returns Error? =
     @java:Method {
         'class: "io.ballerina.lib.aws.mpe.NativeClientAdaptor"
     } external;
