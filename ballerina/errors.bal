@@ -16,5 +16,5 @@
 
 import ballerinax/aws;
 
-# Represents a AWS Marketplace Entitlement distinct error.
+# Represents an AWS Marketplace Entitlement distinct error.
 public type Error distinct error<aws:ErrorDetails>;

@@ -24,6 +24,7 @@ public type ConnectionConfig record {|
     # Authentication configuration: any standard credential source supported by
     # AWS — static credentials, an AWS profile, STS assume-role,
     # web identity (OIDC), IAM Identity Center (SSO), an external credential
+    # process, or the default credential provider chain
     auth:AuthConfig auth;
     # AWS region: an `aws:Region` enum member or a plain region
     # string (e.g., `"us-east-1"`) for regions not yet in the enum

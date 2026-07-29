@@ -33,8 +33,13 @@ final readonly & auth:StaticAuthConfig liveAuth = {
 };
 
 final readonly & auth:StaticAuthConfig mockAuth = {
-    accessKeyId: "mock-access-key-id",
-    secretAccessKey: "mock-secret-access-key"
+    accessKeyId: MOCK_ACCESS_KEY_ID,
+    secretAccessKey: MOCK_SECRET_ACCESS_KEY
+};
+
+final readonly & auth:StaticAuthConfig unexpectedAuth = {
+    accessKeyId: "AKIAIOSFODNN7EXAMPLE",
+    secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 };
 
 final readonly & ConnectionConfig connectionConfig = isLiveServer
@@ -59,6 +64,7 @@ function stopMockService() returns error? {
     if isLiveServer {
         return;
     }
+    check mpeClient->close();
     check mockListener.gracefulStop();
 }
 
@@ -101,6 +107,34 @@ function testGetEntitlementsWithFilter() returns error? {
         maxResults = 10
     );
     test:assertTrue(response.entitlements.length() <= 10);
+    foreach Entitlement entitlement in response.entitlements {
+        test:assertEquals(entitlement.dimension, MOCK_DIMENSION);
+    }
+}
+
+@test:Config {
+    groups: ["getEntitlements"]
+}
+function testGetEntitlementsWithNonMatchingFilter() returns error? {
+    EntitlementsResponse response = check mpeClient->getEntitlements(
+        productCode = testProductCode,
+        filter = {dimension: ["no-such-dimension"]}
+    );
+    test:assertEquals(response.entitlements.length(), 0);
+}
+
+@test:Config {
+    groups: ["getEntitlements"]
+}
+function testGetEntitlementsTruncatesToMaxResults() returns error? {
+    EntitlementsResponse response = check mpeClient->getEntitlements(
+        productCode = testProductCode,
+        maxResults = 10
+    );
+    test:assertTrue(response.entitlements.length() <= 10);
+    if !isLiveServer {
+        test:assertEquals(response.entitlements.length(), 10);
+    }
 }
 
 @test:Config {
@@ -109,6 +143,22 @@ function testGetEntitlementsWithFilter() returns error? {
 function testGetEntitlementsWithUnknownProductCode() returns error? {
     EntitlementsResponse response = check mpeClient->getEntitlements(productCode = "unknown-product-code");
     test:assertEquals(response.entitlements.length(), 0);
+}
+
+@test:Config {
+    groups: ["getEntitlements"]
+}
+function testGetEntitlementsWithUnexpectedCredentials() returns error? {
+    ConnectionConfig config = isLiveServer
+        ? {region: awsRegion, auth: unexpectedAuth}
+        : {region: awsRegion, auth: unexpectedAuth, endpoint: {customEndpoint: mockServerUrl}};
+    Client mpe = check new (config);
+    EntitlementsResponse|Error response = mpe->getEntitlements(productCode = testProductCode);
+    check mpe->close();
+    if response !is Error {
+        test:assertFail("expected a request signed with unexpected credentials to be rejected");
+    }
+    test:assertEquals(response.detail().httpStatusCode, 403);
 }
 
 @test:Config {

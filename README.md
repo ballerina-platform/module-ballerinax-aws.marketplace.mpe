@@ -14,9 +14,63 @@ The `ballerinax/aws.marketplace.mpe` package offers APIs to interact with the AW
 enabling developers to retrieve entitlement data for a product programmatically.
 
 ## Setup guide
-Before using this connector in your Ballerina application, complete the following:
-1. Create an [AWS account](https://portal.aws.amazon.com/billing/signup?nc2=h_ct&src=default&redirect_url=https%3A%2F%2Faws.amazon.com%2Fregistration-confirmation#/start)
-2. [Obtain tokens](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html)
+
+### Prerequisite: an AWS Marketplace seller account
+
+The AWS Marketplace Entitlement Service is a seller-side API: `GetEntitlements` reports the entitlements of customers who have subscribed to *your* products. Before the connector can return any data, you need:
+
+1. An AWS account registered as a seller in the [AWS Marketplace Management Portal](https://aws.amazon.com/marketplace/management/).
+2. A published product on an entitlement-based pricing model — SaaS Contract, SaaS Contract with Consumption, SaaS Subscriptions, or an AMI/container product with contract pricing.
+3. At least one subscription against that product.
+
+### Login to AWS Console
+
+Log into the [AWS Management Console](https://console.aws.amazon.com/console). If you don’t have an AWS account yet, you can create one by visiting the AWS [sign-up](https://aws.amazon.com/free/) page.
+
+### Create a user
+
+1. In the AWS Management Console, search for IAM in the services search bar.
+2. Click on IAM
+
+   ![create-user-1.png](https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/refs/heads/main/docs/setup/resources/create-user-1.png)
+
+3. Click Users
+
+   ![create-user-2.png](https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/refs/heads/main/docs/setup/resources/create-user-2.png)
+
+4. Click Create User
+
+   ![create-user-3.png](https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/refs/heads/main/docs/setup/resources/create-user-3.png)
+
+5. Provide a suitable name for the user and continue
+
+   ![specify-user-details.png](https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/refs/heads/main/docs/setup/resources/specify-user-details.png)
+
+6. Add the required permissions by adding the user to a user group, copying permissions, or attaching policies directly. And click next.
+
+   ![set-user-permissions.png](https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/refs/heads/main/docs/setup/resources/set-user-permissions.png)
+
+7. Review and create the user
+
+   ![review-create-user.png](https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/refs/heads/main/docs/setup/resources/review-create-user.png)
+
+### Get user access keys
+
+1. Click the user that created
+
+   ![users.png](https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/refs/heads/main/docs/setup/resources/users.png)
+
+2. Click `Create access key`
+
+   ![create-access-key-1.png](https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/refs/heads/main/docs/setup/resources/create-access-key-1.png)
+
+3. Click your use case and click next.
+
+   ![select-usecase.png](https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/refs/heads/main/docs/setup/resources/select-usecase.png)
+
+4. Record the Access Key and Secret access key. These credentials will be used to authenticate your Ballerina application with the AWS Marketplace Entitlement Service.
+
+   ![retrieve-access-key.png](https://raw.githubusercontent.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/refs/heads/main/docs/setup/resources/retrieve-access-key.png)
 
 ## Quickstart
 
@@ -56,7 +110,7 @@ mpe:Client mpe = check new ({
 You can use AWS profile-based authentication as an alternative to static credentials.
 
 ```ballerina
-mpe:Client sqsClient = check new ({
+mpe:Client mpe = check new ({
    region: aws:US_EAST_1,
    auth: {
       profileName: "myAwsProfile",
@@ -76,7 +130,9 @@ The standard default credential provider chain, trying each of the following in 
 4. EC2 instance profile (IMDS)
 
 ```ballerina
-mpe:Client sqsClient = check new ({
+import ballerinax/aws.auth;
+
+mpe:Client mpe = check new ({
    region: aws:US_EAST_1,
    auth: auth:DEFAULT_CREDENTIALS
 });

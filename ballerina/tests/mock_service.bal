@@ -22,9 +22,14 @@ final string mockServerUrl = string `http://localhost:${MOCK_SERVER_PORT}`;
 const string AWS_JSON_CONTENT_TYPE = "application/x-amz-json-1.1";
 const string GET_ENTITLEMENTS_TARGET = "AWSMPEntitlementService.GetEntitlements";
 
+const string MOCK_ACCESS_KEY_ID = "mock-access-key-id";
+const string MOCK_SECRET_ACCESS_KEY = "mock-secret-access-key";
+const string SIGV4_ALGORITHM = "AWS4-HMAC-SHA256";
+
 // Stands in for the subscribed product code a live run reads from the environment.
 const string MOCK_PRODUCT_CODE = "mock-product-code";
 const string MOCK_DIMENSION = "users";
+const string MOCK_SECONDARY_DIMENSION = "storage";
 const string MOCK_CUSTOMER_IDENTIFIER = "mock-customer-0001";
 const string MOCK_REQUEST_ID = "mock-request-id";
 
@@ -35,11 +40,40 @@ const int MOCK_EXPIRATION_EPOCH = 1893456000;
 const int MPE_MIN_MAX_RESULTS = 1;
 const int MPE_MAX_MAX_RESULTS = 25;
 
+const string FILTER_CUSTOMER_IDENTIFIER = "CUSTOMER_IDENTIFIER";
+const string FILTER_DIMENSION = "DIMENSION";
+
+const int MOCK_ENTITLEMENT_COUNT = 12;
+
+type MockEntitlement record {|
+    string productCode;
+    string dimension;
+    string customerIdentifier;
+|};
+
+final readonly & MockEntitlement[] mockEntitlements = buildFixtures();
+
+isolated function buildFixtures() returns readonly & MockEntitlement[] {
+    MockEntitlement[] entitlements = [];
+    foreach int i in 1 ... MOCK_ENTITLEMENT_COUNT {
+        entitlements.push({
+            productCode: MOCK_PRODUCT_CODE,
+            dimension: i % 2 == 1 ? MOCK_DIMENSION : MOCK_SECONDARY_DIMENSION,
+            customerIdentifier: string `mock-customer-${i.toString().padZero(4)}`
+        });
+    }
+    return entitlements.cloneReadOnly();
+}
+
 final http:Listener mockListener = check new (MOCK_SERVER_PORT);
 
 final http:Service mockService = service object {
 
     isolated resource function post .(http:Request request) returns http:Response|error {
+        http:Response? authFailure = validateSigV4Credential(request);
+        if authFailure is http:Response {
+            return authFailure;
+        }
         string target = check request.getHeader("X-Amz-Target");
         if target != GET_ENTITLEMENTS_TARGET {
             return awsErrorResponse(400, "UnknownOperationException", string `unsupported target: ${target}`);
@@ -54,25 +88,71 @@ final http:Service mockService = service object {
         }
 
         string productCode = check (check payload.ProductCode).ensureType();
-        return buildResponse(productCode);
+        json|error filter = payload.Filter;
+        return buildResponse(productCode, filter is json ? filter : (),
+                maxResults is int ? maxResults : ());
     }
 };
 
-isolated function buildResponse(string productCode) returns http:Response {
-    if productCode == MOCK_PRODUCT_CODE {
-        return awsJsonResponse({
-            "Entitlements": [
-                {
-                    "ProductCode": MOCK_PRODUCT_CODE,
-                    "Dimension": MOCK_DIMENSION,
-                    "CustomerIdentifier": MOCK_CUSTOMER_IDENTIFIER,
-                    "ExpirationDate": MOCK_EXPIRATION_EPOCH,
-                    "Value": {"IntegerValue": 25}
-                }
-            ]
-        });
+isolated function validateSigV4Credential(http:Request request) returns http:Response? {
+    string|error authorization = request.getHeader("Authorization");
+    if authorization is error {
+        return awsErrorResponse(403, "MissingAuthenticationTokenException",
+                "Request is missing Authentication Token");
     }
-    return awsJsonResponse({"Entitlements": []});
+    if !authorization.startsWith(SIGV4_ALGORITHM + " ")
+            || !authorization.includes(string `Credential=${MOCK_ACCESS_KEY_ID}/`) {
+        return awsErrorResponse(403, "InvalidSignatureException",
+                "The request signature we calculated does not match the signature you provided");
+    }
+    return ();
+}
+
+isolated function buildResponse(string productCode, json filter, int? maxResults) returns http:Response {
+    json[] entitlements = [];
+    foreach MockEntitlement entitlement in mockEntitlements {
+        if matchesRequest(entitlement, productCode, filter) {
+            entitlements.push({
+                "ProductCode": entitlement.productCode,
+                "Dimension": entitlement.dimension,
+                "CustomerIdentifier": entitlement.customerIdentifier,
+                "ExpirationDate": MOCK_EXPIRATION_EPOCH,
+                "Value": {"IntegerValue": 25}
+            });
+        }
+    }
+    if maxResults is int && entitlements.length() > maxResults {
+        entitlements = entitlements.slice(0, maxResults);
+    }
+    return awsJsonResponse({"Entitlements": entitlements});
+}
+
+isolated function matchesRequest(MockEntitlement entitlement, string productCode, json filter) returns boolean {
+    if entitlement.productCode != productCode {
+        return false;
+    }
+    string[]? customerIdentifiers = filterValues(filter, FILTER_CUSTOMER_IDENTIFIER);
+    if customerIdentifiers is string[] && customerIdentifiers.indexOf(entitlement.customerIdentifier) is () {
+        return false;
+    }
+    string[]? dimensions = filterValues(filter, FILTER_DIMENSION);
+    if dimensions is string[] && dimensions.indexOf(entitlement.dimension) is () {
+        return false;
+    }
+    return true;
+}
+
+isolated function filterValues(json filter, string key) returns string[]? {
+    if filter !is map<json> {
+        return ();
+    }
+    json? values = filter[key];
+    if values !is json[] {
+        return ();
+    }
+    return from json value in values
+        where value is string
+        select value.toString();
 }
 
 isolated function awsJsonResponse(json payload) returns http:Response {
