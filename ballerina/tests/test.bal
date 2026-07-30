@@ -64,7 +64,7 @@ function stopMockService() returns error? {
     if isLiveServer {
         return;
     }
-    check mpeClient->close();
+    check mpeClient.close();
     check mockListener.gracefulStop();
 }
 
@@ -73,7 +73,7 @@ function stopMockService() returns error? {
 }
 isolated function testInitWithRegionEnum() returns error? {
     Client mpe = check new (connectionConfig);
-    check mpe->close();
+    check mpe.close();
 }
 
 @test:Config {
@@ -84,7 +84,7 @@ isolated function testInitWithRegionString() returns error? {
         ? {region: "us-east-1", auth: liveAuth}
         : {region: "us-east-1", auth: mockAuth, endpoint: {customEndpoint: mockServerUrl}};
     Client mpe = check new (config);
-    check mpe->close();
+    check mpe.close();
 }
 
 @test:Config {
@@ -154,7 +154,7 @@ function testGetEntitlementsWithUnexpectedCredentials() returns error? {
         : {region: awsRegion, auth: unexpectedAuth, endpoint: {customEndpoint: mockServerUrl}};
     Client mpe = check new (config);
     EntitlementsResponse|Error response = mpe->getEntitlements(productCode = testProductCode);
-    check mpe->close();
+    check mpe.close();
     if response !is Error {
         test:assertFail("expected a request signed with unexpected credentials to be rejected");
     }

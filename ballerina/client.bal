@@ -64,11 +64,11 @@ public isolated client class Client {
 
     # Closes the AWS MPE client resources.
     # ```ballerina
-    # check mpe->close();
+    # check mpe.close();
     # ```
-    # 
+    #
     # + return - A `mpe:Error` if there is an error while closing the client resources or else nil.
-    remote isolated function close() returns Error? =
+    public isolated function close() returns Error? =
     @java:Method {
         'class: "io.ballerina.lib.aws.mpe.NativeClientAdaptor"
     } external;

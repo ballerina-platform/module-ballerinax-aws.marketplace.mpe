@@ -25,6 +25,9 @@ It contains breaking changes. See the "Migrating from 0.2.x" section below.
   identical fields, with `aws:ErrorDetails` additionally including the optional `requestId` field, so field
   access on the value returned by `error.detail()` continues to work unchanged — only explicit
   `mpe:ErrorDetails` type references need updating.
+- **[Breaking]** `Client.close` is now a regular method rather than a remote method, so it is invoked as
+  `mpe.close()` instead of `mpe->close()`. Closing the client is a local resource-release operation, not a
+  call to the remote service.
 - The minimum supported Ballerina distribution is now `2201.12.0` (Swan Lake Update 12), up from
   `2201.11.0`.
 
@@ -118,6 +121,18 @@ if result is mpe:Error {
     aws:ErrorDetails details = result.detail();
     io:println(details.errorCode);
 }
+```
+
+Calls to `close` must use the method-call syntax instead of the remote-call syntax:
+
+```ballerina
+// 0.2.x
+check mpe->close();
+```
+
+```ballerina
+// 1.0.0
+check mpe.close();
 ```
 
 ## [0.2.1] - 2026-03-26

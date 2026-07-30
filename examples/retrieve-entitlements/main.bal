@@ -39,5 +39,5 @@ public function main() returns error? {
             string `dimension: ${entitlement.dimension ?: "N/A"}, value: ${entitlement.value.toString()}`);
     }
 
-    check mpe->close();
+    check mpe.close();
 }
