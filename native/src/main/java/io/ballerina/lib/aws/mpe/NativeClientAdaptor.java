@@ -18,23 +18,19 @@
 
 package io.ballerina.lib.aws.mpe;
 
+import io.ballerina.lib.aws.EndpointConfigUtils;
+import io.ballerina.lib.aws.auth.ProviderFactory;
 import io.ballerina.runtime.api.Environment;
-import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BObject;
 import io.ballerina.runtime.api.values.BString;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.services.marketplaceentitlement.MarketplaceEntitlementClient;
+import software.amazon.awssdk.services.marketplaceentitlement.MarketplaceEntitlementClientBuilder;
 import software.amazon.awssdk.services.marketplaceentitlement.model.GetEntitlementsRequest;
 import software.amazon.awssdk.services.marketplaceentitlement.model.GetEntitlementsResponse;
 
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Representation of {@link software.amazon.awssdk.services.marketplaceentitlement.MarketplaceEntitlementClient} with
@@ -42,9 +38,17 @@ import java.util.concurrent.Executors;
  */
 public final class NativeClientAdaptor {
     private static final String NATIVE_CLIENT = "nativeClient";
-    private static final ExecutorService EXECUTOR_SERVICE = Executors.newCachedThreadPool(new AwsMpeThreadFactory());
+    private static final String NATIVE_CLIENT_CLOSED = "nativeClientClosed";
 
     private NativeClientAdaptor() {
+    }
+
+    private static MarketplaceEntitlementClient buildClient(ConnectionConfig connectionConfig) {
+        MarketplaceEntitlementClientBuilder builder = MarketplaceEntitlementClient.builder()
+                .region(connectionConfig.region())
+                .credentialsProvider(connectionConfig.credentialsProvider());
+        EndpointConfigUtils.applyEndpointConfig(builder, connectionConfig.endpointConfig());
+        return builder.build();
     }
 
     /**
@@ -55,28 +59,29 @@ public final class NativeClientAdaptor {
      * @return A Ballerina `mpe:Error` if failed to initialize the native client with the provided configurations.
      */
     public static Object init(BObject bAwsMpeClient, BMap<BString, Object> configurations) {
+        bAwsMpeClient.addNativeData(NATIVE_CLIENT_CLOSED, new AtomicBoolean(false));
+        ConnectionConfig connectionConfig = null;
         try {
-            ConnectionConfig connectionConfig = new ConnectionConfig(configurations);
-            AwsCredentials credentials = getCredentials(connectionConfig);
-            AwsCredentialsProvider credentialsProvider = StaticCredentialsProvider.create(credentials);
-            MarketplaceEntitlementClient nativeClient = MarketplaceEntitlementClient.builder()
-                    .credentialsProvider(credentialsProvider)
-                    .region(connectionConfig.region()).build();
+            connectionConfig = new ConnectionConfig(configurations);
+            MarketplaceEntitlementClient nativeClient = buildClient(connectionConfig);
             bAwsMpeClient.addNativeData(NATIVE_CLIENT, nativeClient);
         } catch (Exception e) {
-            String errorMsg = String.format("Error occurred while initializing the marketplace entitlement client: %s",
-                    e.getMessage());
-            return CommonUtils.createError(errorMsg, e);
+            releaseProvider(connectionConfig, e);
+            String msg = "Error occurred while initializing the marketplace entitlement client: "
+                    + Objects.requireNonNullElse(e.getMessage(), "Unknown error");
+            return CommonUtils.createError(msg, e);
         }
         return null;
     }
 
-    private static AwsCredentials getCredentials(ConnectionConfig connectionConfig) {
-        if (Objects.nonNull(connectionConfig.sessionToken())) {
-            return AwsSessionCredentials.create(connectionConfig.accessKeyId(), connectionConfig.secretAccessKey(),
-                    connectionConfig.sessionToken());
-        } else {
-            return AwsBasicCredentials.create(connectionConfig.accessKeyId(), connectionConfig.secretAccessKey());
+    private static void releaseProvider(ConnectionConfig connectionConfig, Exception failure) {
+        if (connectionConfig == null) {
+            return;
+        }
+        try {
+            ProviderFactory.closeProvider(connectionConfig.credentialsProvider());
+        } catch (Exception closeFailure) {
+            failure.addSuppressed(closeFailure);
         }
     }
 
@@ -98,10 +103,9 @@ public final class NativeClientAdaptor {
                 BMap<BString, Object> bResponse = CommonUtils.getBallerinaResponse(entitlementsResponse);
                 return bResponse;
             } catch (Exception e) {
-                String errorMsg = String.format("Error occurred while retrieving entitlements for the product: %s",
-                        e.getMessage());
-                BError bError = CommonUtils.createError(errorMsg, e);
-                return bError;
+                String msg = "Error occurred while retrieving entitlements for the product: "
+                        + Objects.requireNonNullElse(e.getMessage(), "Unknown error");
+                return CommonUtils.createError(msg, e);
             }
         });
     }
@@ -113,14 +117,20 @@ public final class NativeClientAdaptor {
      * @return A Ballerina `mpe:Error` if failed to close the underlying resources.
      */
     public static Object close(BObject bAwsMpeClient) {
-        MarketplaceEntitlementClient nativeClient = (MarketplaceEntitlementClient) bAwsMpeClient
-                .getNativeData(NATIVE_CLIENT);
+        if (!(bAwsMpeClient.getNativeData(NATIVE_CLIENT_CLOSED) instanceof AtomicBoolean closed)
+                || !closed.compareAndSet(false, true)) {
+            return null;
+        }
+        Object client = bAwsMpeClient.getNativeData(NATIVE_CLIENT);
         try {
-            nativeClient.close();
+            if (client instanceof MarketplaceEntitlementClient nativeClient) {
+                nativeClient.close();
+            }
+            bAwsMpeClient.addNativeData(NATIVE_CLIENT, null);
         } catch (Exception e) {
-            String errorMsg = String.format("Error occurred while closing the marketplace entitlement client: %s",
-                    e.getMessage());
-            return CommonUtils.createError(errorMsg, e);
+            String msg = "Error occurred while closing the marketplace entitlement client: "
+                    + Objects.requireNonNullElse(e.getMessage(), "Unknown error");
+            return CommonUtils.createError(msg, e);
         }
         return null;
     }

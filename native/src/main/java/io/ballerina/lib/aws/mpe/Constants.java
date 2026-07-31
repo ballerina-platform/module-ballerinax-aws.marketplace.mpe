@@ -53,9 +53,4 @@ public interface Constants {
 
     // Constants related to MPE Error
     String MPE_ERROR = "Error";
-    String MPE_ERROR_DETAILS = "ErrorDetails";
-    BString MPE_ERROR_DETAILS_HTTP_STATUS_CODE = StringUtils.fromString("httpStatusCode");
-    BString MPE_ERROR_DETAILS_HTTP_STATUS_TXT = StringUtils.fromString("httpStatusText");
-    BString MPE_ERROR_DETAILS_ERR_CODE = StringUtils.fromString("errorCode");
-    BString MPE_ERROR_DETAILS_ERR_MSG = StringUtils.fromString("errorMessage");
 }

@@ -18,6 +18,7 @@
 
 package io.ballerina.lib.aws.mpe;
 
+import io.ballerina.lib.aws.ErrorUtils;
 import io.ballerina.runtime.api.Module;
 import io.ballerina.runtime.api.creators.ErrorCreator;
 import io.ballerina.runtime.api.creators.TypeCreator;
@@ -32,8 +33,6 @@ import io.ballerina.runtime.api.values.BError;
 import io.ballerina.runtime.api.values.BMap;
 import io.ballerina.runtime.api.values.BString;
 import io.ballerina.stdlib.time.nativeimpl.Utc;
-import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.services.marketplaceentitlement.model.Entitlement;
 import software.amazon.awssdk.services.marketplaceentitlement.model.EntitlementValue;
 import software.amazon.awssdk.services.marketplaceentitlement.model.GetEntitlementFilterName;
@@ -120,7 +119,7 @@ public final class CommonUtils {
             bEntitlement.put(Constants.MPE_ENTITLEMENT_DIMENSION, StringUtils.fromString(dimension));
         }
         String customerIdentifier = nativeEntitlement.customerIdentifier();
-        if (Objects.nonNull(dimension)) {
+        if (Objects.nonNull(customerIdentifier)) {
             bEntitlement.put(Constants.MPE_ENTITLEMENT_CUS_IDNFR, StringUtils.fromString(customerIdentifier));
         }
         Instant expirationDate = nativeEntitlement.expirationDate();
@@ -133,6 +132,9 @@ public final class CommonUtils {
 
     private static void populateEntitlementValue(Entitlement nativeEntitlement, BMap<BString, Object> bEntitlement) {
         EntitlementValue nativeEntitlementValue = nativeEntitlement.value();
+        if (Objects.isNull(nativeEntitlementValue)) {
+            return;
+        }
         Boolean entitlementBoolVal = nativeEntitlementValue.booleanValue();
         if (Objects.nonNull(entitlementBoolVal)) {
             bEntitlement.put(Constants.MPE_ENTITLEMENT_VALUE, entitlementBoolVal);
@@ -154,23 +156,12 @@ public final class CommonUtils {
         }
     }
 
+    /**
+     * Creates an {@code mpe:Error} built from the given exception.
+     */
     public static BError createError(String message, Throwable exception) {
         BError cause = ErrorCreator.createError(exception);
-        BMap<BString, Object> errorDetails = ValueCreator.createRecordValue(
-                ModuleUtils.getModule(), Constants.MPE_ERROR_DETAILS);
-        if (exception instanceof AwsServiceException awsSvcExp && Objects.nonNull(awsSvcExp.awsErrorDetails())) {
-            AwsErrorDetails awsErrorDetails = awsSvcExp.awsErrorDetails();
-            if (Objects.nonNull(awsErrorDetails.sdkHttpResponse())) {
-                errorDetails.put(
-                        Constants.MPE_ERROR_DETAILS_HTTP_STATUS_CODE, awsErrorDetails.sdkHttpResponse().statusCode());
-                awsErrorDetails.sdkHttpResponse().statusText().ifPresent(httpStatusTxt -> errorDetails.put(
-                        Constants.MPE_ERROR_DETAILS_HTTP_STATUS_TXT, StringUtils.fromString(httpStatusTxt)));
-            }
-            errorDetails.put(
-                    Constants.MPE_ERROR_DETAILS_ERR_CODE, StringUtils.fromString(awsErrorDetails.errorCode()));
-            errorDetails.put(
-                    Constants.MPE_ERROR_DETAILS_ERR_MSG, StringUtils.fromString(awsErrorDetails.errorMessage()));
-        }
+        BMap<BString, Object> errorDetails = ErrorUtils.createErrorDetails(exception);
         return ErrorCreator.createError(
                 ModuleUtils.getModule(), Constants.MPE_ERROR, StringUtils.fromString(message), cause, errorDetails);
     }

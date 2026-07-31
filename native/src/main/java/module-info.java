@@ -17,13 +17,14 @@
  */
 
 module io.ballerina.lib.aws.mpe {
-    requires io.ballerina.runtime;
-    requires io.ballerina.lang.value;
+    requires io.ballerina.lib.aws.auth;
     requires io.ballerina.stdlib.time;
     requires software.amazon.awssdk.auth;
+    requires software.amazon.awssdk.http;
     requires software.amazon.awssdk.regions;
     requires software.amazon.awssdk.services.marketplaceentitlement;
     requires software.amazon.awssdk.awscore;
+    requires transitive io.ballerina.runtime;
     requires software.amazon.awssdk.core;
 
     exports io.ballerina.lib.aws.mpe;
