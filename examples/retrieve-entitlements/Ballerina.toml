@@ -2,9 +2,3 @@
 org = "wso2"
 name = "retrieve_entitlements"
 version = "0.1.0"
-
-[[dependency]]
-org = "ballerinax"
-name = "aws.marketplace.mpe"
-version = "1.0.0"
-repository = "local"
