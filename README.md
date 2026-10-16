@@ -1,7 +1,7 @@
 # Ballerina AWS Marketplace Entitlement connector
 
 [![Build](https://github.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/actions/workflows/ci.yml/badge.svg)](https://github.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/actions/workflows/ci.yml)
-[![Trivy](https://github.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/actions/workflows/trivy-scan.yml/badge.svg)](https://github.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/actions/workflows/trivy-scan.yml)
+[![Security Scan](https://github.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/actions/workflows/security-scan.yml/badge.svg)](https://github.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/actions/workflows/security-scan.yml)
 [![GraalVM Check](https://github.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/actions/workflows/build-with-bal-test-graalvm.yml/badge.svg)](https://github.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/actions/workflows/build-with-bal-test-graalvm.yml)
 [![GitHub Last Commit](https://img.shields.io/github/last-commit/ballerina-platform/module-ballerinax-aws.marketplace.mpe.svg)](https://github.com/ballerina-platform/module-ballerinax-aws.marketplace.mpe/commits/main)
 [![GitHub Issues](https://img.shields.io/github/issues/ballerina-platform/ballerina-library/module/aws.marketplace.mpe.svg?label=Open%20Issues)](https://github.com/ballerina-platform/ballerina-library/labels/module%2Faws.marketplace.mpe)
